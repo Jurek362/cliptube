@@ -1,469 +1,401 @@
-import React, { useState, useEffect } from 'react';
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ClipTube - Twoja platforma wideo</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
 
-// WAŻNE: Zmień ten URL na adres URL Twojego wdrożonego backendu na Render.com
-// Np. const backendApiUrl = 'https://twoj-backend-cliptube.onrender.com';
-const backendApiUrl = 'https://cliptube.onrender.com'; // Domyślnie na potrzeby lokalnego developmentu
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #0f0f0f;
+            color: #ffffff;
+            line-height: 1.6;
+        }
 
-// Helper function to format dates
-const formatDate = (dateString) => {
-  const options = { year: 'numeric', month: 'long', day: 'numeric' };
-  return new Date(dateString).toLocaleDateString('pl-PL', options);
-};
-
-// --- Components ---
-
-// Search Bar Component
-const SearchBar = ({ searchTerm, onSearchChange }) => (
-  <div className="w-full max-w-xl mx-auto mb-8">
-    <input
-      type="text"
-      placeholder="Wyszukaj filmy..."
-      value={searchTerm}
-      onChange={(e) => onSearchChange(e.target.value)}
-      className="w-full p-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-800 transition duration-150 ease-in-out"
-      aria-label="Wyszukaj filmy"
-    />
-  </div>
-);
-
-// Video Card Component for displaying video thumbnails and titles
-const VideoCard = ({ video, onVideoSelect }) => (
-  <div
-    className="bg-white rounded-lg shadow-md overflow-hidden cursor-pointer hover:shadow-lg transition-shadow duration-300 transform hover:-translate-y-1"
-    onClick={() => onVideoSelect(video)}
-    role="button"
-    tabIndex="0"
-    aria-label={`Odtwórz film: ${video.title}`}
-  >
-    <img
-      src={video.thumbnail || 'https://placehold.co/320x180/CCCCCC/333333?text=Brak+miniaturki'} // Fallback for thumbnail
-      alt={`Miniatura filmu: ${video.title}`}
-      className="w-full h-40 object-cover"
-      onError={(e) => {
-        e.target.onerror = null;
-        e.target.src = 'https://placehold.co/320x180/CCCCCC/333333?text=Brak+miniaturki';
-      }}
-    />
-    <div className="p-4">
-      <h3 className="text-lg font-semibold text-gray-900 mb-1 line-clamp-2">{video.title}</h3>
-      <p className="text-sm text-gray-600">Opublikowano: {formatDate(video.uploadDate)}</p>
-    </div>
-  </div>
-);
-
-// Home Page Component (Browse and Search Functionality)
-const HomePage = ({ videos, onVideoSelect, onNavigate, isLoading, error }) => {
-  const [searchTerm, setSearchTerm] = useState('');
-
-  // Filter videos based on search term in title or description
-  const filteredVideos = videos.filter(video =>
-    video.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    video.description.toLowerCase().includes(searchTerm.toLowerCase())
-  );
-
-  return (
-    <div className="container mx-auto p-4 max-w-screen-xl">
-      <h1 className="text-4xl font-extrabold text-center text-gray-900 mb-10">
-        <span className="bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-purple-600">
-          ClipTube
-        </span>
-      </h1>
-
-      <SearchBar searchTerm={searchTerm} onSearchChange={setSearchTerm} />
-
-      {isLoading && (
-        <p className="text-center text-blue-600 text-lg">Ładowanie filmów...</p>
-      )}
-      {error && (
-        <p className="text-center text-red-600 text-lg">Błąd ładowania filmów: {error}</p>
-      )}
-      {!isLoading && !error && filteredVideos.length === 0 ? (
-        <p className="text-center text-gray-600 text-lg">Brak filmów spełniających kryteria wyszukiwania. Spróbuj przesłać jakiś film!</p>
-      ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-          {filteredVideos.map(video => (
-            <VideoCard key={video.id} video={video} onVideoSelect={onVideoSelect} />
-          ))}
-        </div>
-      )}
-
-      <div className="text-center mt-12">
-        <button
-          onClick={() => onNavigate('upload')}
-          className="bg-purple-600 hover:bg-purple-700 text-white font-bold py-3 px-6 rounded-lg shadow-lg transform transition-all duration-300 ease-in-out hover:scale-105 focus:outline-none focus:ring-4 focus:ring-purple-300"
-          aria-label="Prześlij swój film"
-        >
-          Prześlij swój film
-        </button>
-      </div>
-    </div>
-  );
-};
-
-// Video Detail Page Component (Video Player)
-const VideoDetailPage = ({ video, onBack }) => (
-  <div className="container mx-auto p-4 max-w-screen-xl">
-    {/* "Wróć do listy filmów" button */}
-    <button
-      onClick={onBack}
-      className="flex items-center text-blue-600 hover:text-blue-800 mb-6 font-semibold transition-colors duration-200"
-      aria-label="Wróć do listy filmów"
-    >
-      <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
-      </svg>
-      Wróć do listy filmów
-    </button>
-
-    <div className="bg-white rounded-lg shadow-xl p-6 lg:p-8 relative"> {/* Added 'relative' for positioning the close button */}
-      {/* Close button (X) */}
-      <button
-        onClick={onBack}
-        className="absolute top-4 right-4 p-2 rounded-full bg-gray-200 text-gray-700 hover:bg-gray-300 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-gray-400"
-        aria-label="Zamknij i wróć do strony głównej"
-      >
-        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path>
-        </svg>
-      </button>
-
-      {/* Updated layout for video and details */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        <div className="lg:col-span-2"> {/* Video player occupies 2/3 width on large screens */}
-          <div className="aspect-w-16 aspect-h-9 mb-4 rounded-lg overflow-hidden">
-            {/*
-              WAŻNE: URL w `src` elementu `<video>` musi wskazywać na faktyczny plik wideo
-              przechowywany na serwerze lub w usłudze chmurowej (np. AWS S3, Google Cloud Storage),
-              po jego przetworzeniu (transkodowaniu) przez backend.
-              Atrybut 'controls' zapewnia natywny przycisk pełnego ekranu.
-              Atrybut 'playsInline' jest ważny dla odtwarzania wideo na urządzeniach mobilnych.
-            */}
-            <video
-              controls
-              playsInline // Allows inline playback on iOS before fullscreen if user desires
-              className="w-full h-full rounded-lg"
-              src={video.videoUrl}
-              poster={video.thumbnail || 'https://placehold.co/320x180/CCCCCC/333333?text=Brak+miniaturki'} // Fallback for poster
-              aria-label={`Odtwarzacz wideo dla: ${video.title}`}
-            >
-              Twoja przeglądarka nie obsługuje elementu wideo.
-            </video>
-          </div>
-        </div>
-        <div className="lg:col-span-1"> {/* Text content occupies 1/3 width on large screens */}
-          <h2 className="text-3xl font-bold text-gray-900 mb-2">{video.title}</h2>
-          <p className="text-gray-700 text-lg mb-4">{video.description}</p>
-          <p className="text-md text-gray-600">Opublikowano: {formatDate(video.uploadDate)}</p>
-        </div>
-      </div>
-    </div>
-  </div>
-);
-
-// Upload Page Component
-const UploadPage = ({ onNavigate, onVideoUploadSuccess }) => {
-  const [title, setTitle] = useState('');
-  const [description, setDescription] = useState('');
-  const [selectedFile, setSelectedFile] = useState(null);
-  const [isUploading, setIsUploading] = useState(false);
-  const [uploadProgress, setUploadProgress] = useState(0); // For upload progress
-  const [message, setMessage] = useState('');
-  const [messageType, setMessageType] = useState(''); // 'success' or 'error'
-
-  const handleFileChange = (event) => {
-    if (event.target.files && event.target.files[0]) {
-      setSelectedFile(event.target.files[0]);
-    }
-  };
-
-  const handleSubmit = async (event) => {
-    event.preventDefault();
-    setMessage('');
-    setMessageType('');
-    setUploadProgress(0);
-
-    if (!title || !selectedFile) {
-      setMessage('Proszę podać tytuł i wybrać plik wideo.');
-      setMessageType('error');
-      return;
-    }
-
-    setIsUploading(true);
-
-    const formData = new FormData();
-    formData.append('title', title);
-    formData.append('description', description);
-    formData.append('video', selectedFile); // 'video' should match the field name in your backend
-
-    try {
-      const response = await fetch(`${backendApiUrl}/api/upload`, {
-        method: 'POST',
-        body: formData, // No 'Content-Type' header needed for FormData; browser sets it
-        // You might need to implement XHR for detailed progress reporting
-        // For simplicity, we'll just simulate it or use a simple loading indicator
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || `Server error: ${response.status}`);
-      }
-
-      const result = await response.json();
-      onVideoUploadSuccess(result.video); // Assuming backend returns the new video object
-
-      setMessage('Film został pomyślnie przesłany i jest w trakcie przetwarzania!');
-      setMessageType('success');
-      setTitle('');
-      setDescription('');
-      setSelectedFile(null);
-      // Optional: Redirect to home page after a short delay
-      setTimeout(() => onNavigate('home'), 3000);
-
-    } catch (error) {
-      console.error('Błąd przesyłania filmu:', error);
-      setMessage(`Wystąpił błąd podczas przesyłania filmu: ${error.message}. Spróbuj ponownie.`);
-      setMessageType('error');
-    } finally {
-      setIsUploading(false);
-      setUploadProgress(0); // Reset progress
-    }
-  };
-
-  return (
-    <div className="container mx-auto p-4 max-w-screen-md">
-      <button
-        onClick={() => onNavigate('home')}
-        className="flex items-center text-blue-600 hover:text-blue-800 mb-6 font-semibold transition-colors duration-200"
-        aria-label="Wróć do strony głównej"
-      >
-        <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
-        </svg>
-        Wróć do strony głównej
-      </button>
-
-      <div className="bg-white rounded-lg shadow-xl p-6 lg:p-8">
-        <h2 className="text-3xl font-bold text-center text-gray-900 mb-8">Prześlij nowy film</h2>
-        <form onSubmit={handleSubmit} className="space-y-6">
-          <div>
-            <label htmlFor="title" className="block text-sm font-medium text-gray-700 mb-2">
-              Tytuł filmu:
-            </label>
-            <input
-              type="text"
-              id="title"
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-800 transition duration-150 ease-in-out"
-              required
-              aria-required="true"
-              placeholder="Wprowadź tytuł"
-            />
-          </div>
-          <div>
-            <label htmlFor="description" className="block text-sm font-medium text-gray-700 mb-2">
-              Opis (opcjonalnie):
-            </label>
-            <textarea
-              id="description"
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              rows="4"
-              className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-800 resize-y transition duration-150 ease-in-out"
-              placeholder="Dodaj krótki opis filmu"
-            ></textarea>
-          </div>
-          <div>
-            <label htmlFor="videoFile" className="block text-sm font-medium text-gray-700 mb-2">
-              Wybierz plik wideo:
-            </label>
-            <input
-              type="file"
-              id="videoFile"
-              accept="video/*" // Akceptuje tylko pliki wideo
-              onChange={handleFileChange}
-              className="block w-full text-sm text-gray-900
-                file:mr-4 file:py-2 file:px-4
-                file:rounded-lg file:border-0
-                file:text-sm file:font-semibold
-                file:bg-blue-50 file:text-blue-700
-                hover:file:bg-blue-100 cursor-pointer"
-              required
-              aria-required="true"
-            />
-            {selectedFile && (
-              <p className="mt-2 text-sm text-gray-600">Wybrany plik: <span className="font-medium">{selectedFile.name}</span></p>
-            )}
-          </div>
-
-          {message && (
-            <div className={`p-3 rounded-lg text-center font-medium ${messageType === 'success' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
-              {message}
-            </div>
-          )}
-
-          <button
-            type="submit"
-            className={`w-full py-3 px-6 rounded-lg text-white font-bold shadow-lg transform transition-all duration-300 ease-in-out ${isUploading ? 'bg-gray-400 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700 hover:scale-105 focus:outline-none focus:ring-4 focus:ring-blue-300'}`}
-            disabled={isUploading}
-            aria-disabled={isUploading}
-            aria-label={isUploading ? "Przesyłanie w toku" : "Prześlij film"}
-          >
-            {isUploading ? (
-              <span className="flex items-center justify-center">
-                <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                </svg>
-                Przesyłanie...
-              </span>
-            ) : (
-              'Prześlij film'
-            )}
-          </button>
-        </form>
-        <p className="text-sm text-gray-500 text-center mt-6">
-          <strong className="text-red-500">WAŻNE:</strong> To jest demonstracja frontendu. Faktyczne przechowywanie i przetwarzanie filmów wymaga dedykowanego serwera (backendu) na Render.com lub podobnej platformie.
-        </p>
-      </div>
-    </div>
-  );
-};
-
-
-// Main App Component
-export default function App() {
-  const [currentPage, setCurrentPage] = useState('home'); // Controls current view: 'home', 'upload', 'videoDetail'
-  const [selectedVideo, setSelectedVideo] = useState(null); // Stores the video selected for viewing
-  const [allVideos, setAllVideos] = useState([]); // Start with empty array, data comes from backend
-  const [isLoadingVideos, setIsLoadingVideos] = useState(false);
-  const [videosError, setVideosError] = useState(null);
-
-  // Function to fetch videos from the backend
-  const fetchVideos = async () => {
-    setIsLoadingVideos(true);
-    setVideosError(null);
-    try {
-      const response = await fetch(`${backendApiUrl}/api/videos`);
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-      const data = await response.json();
-      setAllVideos(data);
-    } catch (error) {
-      console.error("Could not fetch videos:", error);
-      setVideosError(error.message);
-    } finally {
-      setIsLoadingVideos(false);
-    }
-  };
-
-  // Fetch videos on component mount
-  useEffect(() => {
-    fetchVideos();
-  }, []); // Empty dependency array means this runs once on mount
-
-  // Function to handle video selection and switch to video detail page
-  const handleVideoSelect = (video) => {
-    setSelectedVideo(video);
-    setCurrentPage('videoDetail');
-  };
-
-  // Function to handle successful upload. Re-fetch videos to show the new one.
-  const handleUploadSuccess = (newVideo) => {
-    // Ideally, the backend would trigger a websocket update or we'd just re-fetch the list
-    fetchVideos(); // Re-fetch all videos after successful upload
-    // You could also optimistically add the newVideo to state if you trust the backend response
-    // setAllVideos(prevVideos => [newVideo, ...prevVideos]);
-  };
-
-  return (
-    <div className="min-h-screen bg-gray-100 font-sans antialiased text-gray-900">
-      {/* Tailwind CSS Script for convenience. This should be in the <head> in a real HTML file. */}
-      <script src="https://cdn.tailwindcss.com"></script>
-      {/* Inter Font link. This should be in the <head> in a real HTML file. */}
-      <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet" />
-      <style>
-        {`
-          body {
-            font-family: 'Inter', sans-serif;
-          }
-          /* Custom aspect ratio for video player to maintain 16:9 */
-          .aspect-w-16 {
-            position: relative;
-            padding-bottom: 56.25%; /* 16:9 aspect ratio */
-            height: 0;
-            overflow: hidden;
-          }
-          .aspect-h-9 {
-            position: absolute;
+        .header {
+            background: linear-gradient(135deg, #1e1e1e, #2d2d2d);
+            padding: 1rem 2rem;
+            position: sticky;
             top: 0;
-            left: 0;
+            z-index: 1000;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+        }
+
+        .nav {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .logo {
+            font-size: 2rem;
+            font-weight: bold;
+            background: linear-gradient(45deg, #ff6b6b, #4ecdc4);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .search-container {
+            flex: 1;
+            max-width: 600px;
+            margin: 0 2rem;
+            position: relative;
+        }
+
+        .search-input {
             width: 100%;
-            height: 100%;
-          }
-        `}
-      </style>
+            padding: 12px 50px 12px 20px;
+            border: 2px solid #333;
+            border-radius: 25px;
+            background-color: #1e1e1e;
+            color: #ffffff;
+            font-size: 16px;
+            transition: all 0.3s ease;
+        }
 
-      <header className="bg-white shadow-sm py-4 mb-8">
-        <nav className="container mx-auto flex justify-between items-center px-4 max-w-screen-xl">
-          {/* ClipTube Logo/Title - clickable to go to homepage */}
-          <div className="flex items-center space-x-6">
-            <h1 className="text-2xl font-extrabold text-gray-900">
-              <button
-                onClick={() => setCurrentPage('home')}
-                className="text-blue-600 hover:text-blue-800 transition-colors duration-200"
-                aria-label="Go to ClipTube home page"
-              >
-                ClipTube
-              </button>
-            </h1>
-            {/* Upload Button */}
-            <button
-              onClick={() => setCurrentPage('upload')}
-              className="flex items-center px-4 py-2 bg-blue-500 text-white rounded-lg font-medium shadow-md hover:bg-blue-600 transition-colors duration-200"
-              aria-label="Upload new video"
-            >
-              <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path>
-              </svg>
-              Prześlij
-            </button>
-          </div>
+        .search-input:focus {
+            outline: none;
+            border-color: #4ecdc4;
+            box-shadow: 0 0 10px rgba(78, 205, 196, 0.3);
+        }
+
+        .search-btn {
+            position: absolute;
+            right: 10px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: linear-gradient(45deg, #ff6b6b, #4ecdc4);
+            border: none;
+            padding: 8px 15px;
+            border-radius: 20px;
+            color: white;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .search-btn:hover {
+            transform: translateY(-50%) scale(1.05);
+            box-shadow: 0 5px 15px rgba(78, 205, 196, 0.4);
+        }
+
+        .upload-btn {
+            background: linear-gradient(45deg, #ff6b6b, #4ecdc4);
+            color: white;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 25px;
+            font-weight: bold;
+            cursor: pointer;
+            text-decoration: none;
+            transition: all 0.3s ease;
+        }
+
+        .upload-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(255, 107, 107, 0.4);
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        .hero {
+            text-align: center;
+            margin-bottom: 3rem;
+            padding: 3rem 0;
+            background: linear-gradient(135deg, rgba(255, 107, 107, 0.1), rgba(78, 205, 196, 0.1));
+            border-radius: 20px;
+            backdrop-filter: blur(10px);
+        }
+
+        .hero h1 {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+            background: linear-gradient(45deg, #ff6b6b, #4ecdc4);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .hero p {
+            font-size: 1.2rem;
+            color: #cccccc;
+            max-width: 600px;
+            margin: 0 auto;
+        }
+
+        .videos-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+            gap: 2rem;
+            margin-top: 2rem;
+        }
+
+        .video-card {
+            background: linear-gradient(135deg, #1e1e1e, #2d2d2d);
+            border-radius: 15px;
+            overflow: hidden;
+            transition: all 0.3s ease;
+            cursor: pointer;
+            border: 1px solid transparent;
+        }
+
+        .video-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 30px rgba(78, 205, 196, 0.2);
+            border-color: #4ecdc4;
+        }
+
+        .video-thumbnail {
+            width: 100%;
+            height: 180px;
+            object-fit: cover;
+            transition: all 0.3s ease;
+        }
+
+        .video-card:hover .video-thumbnail {
+            transform: scale(1.05);
+        }
+
+        .video-info {
+            padding: 1.5rem;
+        }
+
+        .video-title {
+            font-size: 1.1rem;
+            font-weight: bold;
+            margin-bottom: 0.5rem;
+            color: #ffffff;
+            line-height: 1.4;
+        }
+
+        .video-description {
+            color: #cccccc;
+            font-size: 0.9rem;
+            margin-bottom: 1rem;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+
+        .video-meta {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 0.8rem;
+            color: #999999;
+        }
+
+        .video-views {
+            background: linear-gradient(45deg, #ff6b6b, #4ecdc4);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            font-weight: bold;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 3rem;
+            font-size: 1.2rem;
+            color: #cccccc;
+        }
+
+        .no-results {
+            text-align: center;
+            padding: 3rem;
+            color: #cccccc;
+        }
+
+        .no-results h3 {
+            font-size: 1.5rem;
+            margin-bottom: 1rem;
+            color: #ffffff;
+        }
+
+        @media (max-width: 768px) {
+            .nav {
+                flex-direction: column;
+                gap: 1rem;
+            }
+
+            .search-container {
+                max-width: 100%;
+                margin: 0;
+            }
+
+            .hero h1 {
+                font-size: 2rem;
+            }
+
+            .videos-grid {
+                grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+                gap: 1rem;
+            }
+
+            .container {
+                padding: 1rem;
+            }
+        }
+
+        .pulse {
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0% {
+                opacity: 1;
+            }
+            50% {
+                opacity: 0.5;
+            }
+            100% {
+                opacity: 1;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header class="header">
+        <nav class="nav">
+            <div class="logo">ClipTube</div>
+            <div class="search-container">
+                <input type="text" class="search-input" placeholder="Szukaj filmów..." id="searchInput">
+                <button class="search-btn" onclick="searchVideos()">🔍</button>
+            </div>
+            <a href="/upload" class="upload-btn">+ Dodaj film</a>
         </nav>
-      </header>
+    </header>
 
-      <main>
-        {/* Conditional rendering based on currentPage state */}
-        {currentPage === 'home' && (
-          <HomePage
-            videos={allVideos}
-            onVideoSelect={handleVideoSelect}
-            onNavigate={setCurrentPage}
-            isLoading={isLoadingVideos}
-            error={videosError}
-          />
-        )}
-        {currentPage === 'upload' && (
-          <UploadPage
-            onNavigate={setCurrentPage}
-            onVideoUploadSuccess={handleUploadSuccess}
-          />
-        )}
-        {currentPage === 'videoDetail' && selectedVideo && (
-          <VideoDetailPage
-            video={selectedVideo}
-            onBack={() => setCurrentPage('home')}
-          />
-        )}
-      </main>
+    <main class="container">
+        <section class="hero">
+            <h1>Witaj w ClipTube</h1>
+            <p>Odkryj niesamowite filmy i podziel się swoimi utworami z całym światem</p>
+        </section>
 
-      <footer className="bg-gray-800 text-white text-center p-6 mt-12 rounded-t-lg">
-        <p>&copy; {new Date().getFullYear()} ClipTube. Wszelkie prawa zastrzeżone.</p>
-        <p className="text-sm mt-2">
-          <strong className="text-yellow-400">Pamiętaj:</strong> To jest demonstracja frontendu. Faktyczne przechowywanie i przetwarzanie filmów wymaga infrastruktury backendowej, którą możesz zbudować na Render.com.
-        </p>
-      </footer>
-    </div>
-  );
-}
+        <div id="videosContainer">
+            <div class="loading pulse">Ładowanie filmów...</div>
+        </div>
+    </main>
+
+    <script>
+        let allVideos = [];
+        let currentSearchQuery = '';
+
+        // Ładowanie filmów z API
+        async function loadVideos() {
+            try {
+                const response = await fetch('/api/videos');
+                allVideos = await response.json();
+                displayVideos(allVideos);
+            } catch (error) {
+                console.error('Błąd podczas ładowania filmów:', error);
+                document.getElementById('videosContainer').innerHTML = 
+                    '<div class="no-results"><h3>Błąd ładowania</h3><p>Nie udało się załadować filmów. Spróbuj odświeżyć stronę.</p></div>';
+            }
+        }
+
+        // Wyświetlanie filmów
+        function displayVideos(videos) {
+            const container = document.getElementById('videosContainer');
+            
+            if (videos.length === 0) {
+                container.innerHTML = `
+                    <div class="no-results">
+                        <h3>${currentSearchQuery ? 'Brak wyników' : 'Brak filmów'}</h3>
+                        <p>${currentSearchQuery ? 'Spróbuj innych słów kluczowych' : 'Dodaj pierwszy film!'}</p>
+                    </div>
+                `;
+                return;
+            }
+
+            const videosGrid = document.createElement('div');
+            videosGrid.className = 'videos-grid';
+            
+            videos.forEach(video => {
+                const videoCard = document.createElement('div');
+                videoCard.className = 'video-card';
+                videoCard.onclick = () => watchVideo(video.id);
+                
+                videoCard.innerHTML = `
+                    <img src="${video.thumbnail}" alt="${video.title}" class="video-thumbnail" loading="lazy">
+                    <div class="video-info">
+                        <div class="video-title">${video.title}</div>
+                        <div class="video-description">${video.description}</div>
+                        <div class="video-meta">
+                            <span class="video-views">${formatViews(video.views)} wyświetleń</span>
+                            <span class="video-duration">${video.duration}</span>
+                        </div>
+                    </div>
+                `;
+                
+                videosGrid.appendChild(videoCard);
+            });
+            
+            container.innerHTML = '';
+            container.appendChild(videosGrid);
+        }
+
+        // Formatowanie liczby wyświetleń
+        function formatViews(views) {
+            if (views >= 1000000) {
+                return (views / 1000000).toFixed(1) + 'M';
+            } else if (views >= 1000) {
+                return (views / 1000).toFixed(1) + 'K';
+            }
+            return views.toString();
+        }
+
+        // Przejście do oglądania filmu
+        function watchVideo(videoId) {
+            window.location.href = `/watch/${videoId}`;
+        }
+
+        // Wyszukiwanie filmów
+        function searchVideos() {
+            const query = document.getElementById('searchInput').value.toLowerCase().trim();
+            currentSearchQuery = query;
+            
+            if (query === '') {
+                displayVideos(allVideos);
+                return;
+            }
+            
+            const filteredVideos = allVideos.filter(video => 
+                video.title.toLowerCase().includes(query) || 
+                video.description.toLowerCase().includes(query)
+            );
+            
+            displayVideos(filteredVideos);
+        }
+
+        // Obsługa Enter w polu wyszukiwania
+        document.getElementById('searchInput').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                searchVideos();
+            }
+        });
+
+        // Wyszukiwanie w czasie rzeczywistym
+        document.getElementById('searchInput').addEventListener('input', function() {
+            clearTimeout(this.searchTimeout);
+            this.searchTimeout = setTimeout(searchVideos, 300);
+        });
+
+        // Inicjalizacja
+        loadVideos();
+    </script>
+</body>
+</html>
